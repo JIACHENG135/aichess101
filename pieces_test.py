@@ -1,5 +1,5 @@
 import unittest
-from state_machine import (
+from pieces import (
     Piece,
     BlackMinion,
     RedMinion,
@@ -14,12 +14,12 @@ from state_machine import (
     BlackElephant,
     RedElephant,
     BlackGurdian,
-    StateMachine,
     cannon_filter,
 )
+from state_machine import StateMachine
 
 
-class TestStateMachine(unittest.TestCase):
+class TestPieces(unittest.TestCase):
     def test_piece_is(self):
         state = [["黑兵"]]
         x, y = 0, 0
