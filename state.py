@@ -13,36 +13,6 @@ class State:
         self.state = state
         self.player = player
 
-    @staticmethod
-    def state_to_tensor(state: State) -> torch.Tensor:
-        """
-        Encode the Xiangqi state into a 20x10x9 tensor (20 channels, 10 rows, 9 cols).
-        Each channel represents one type of piece for one player.
-        """
-        piece_to_idx = {
-            "红车": 0,
-            "红马": 1,
-            "红象": 2,
-            "红士": 3,
-            "红帅": 4,
-            "红炮": 5,
-            "红兵": 6,
-            "黑车": 7,
-            "黑马": 8,
-            "黑象": 9,
-            "黑士": 10,
-            "黑帅": 11,
-            "黑炮": 12,
-            "黑兵": 13,
-        }
-        tensor = torch.zeros(20, 10, 9)
-        for i, row in enumerate(state.state):
-            for j, piece in enumerate(row):
-                if piece in piece_to_idx:
-                    tensor[piece_to_idx[piece], i, j] = 1
-        tensor[14 if state.player == 1 else 15, :, :] = 1  # 当前玩家channel
-        return tensor
-
     def draw(self):
         Visualize.render_board_with_state(self.state)
 

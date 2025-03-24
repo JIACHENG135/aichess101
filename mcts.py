@@ -19,10 +19,11 @@ def _calculate(total_visits, values, visits):
 
 
 class MctNode:
-    def __init__(self, state: State, parent=None):
+    def __init__(self, state: State, parent=None, move=None):
         self.state = state
         self.parent = parent
-        self.children: dict[int, MctNode] = {}
+        self.move = move  # (from_pos, to_pos)
+        self.children: dict[tuple[int, int], MctNode] = {}
         self.visits = 0
         self.values = 0
 
@@ -34,14 +35,35 @@ class MctNode:
 
     def expand(self):
         for _state in self.state.get_legal_moves():
-            self.children[_state] = MctNode(_state, self)
+            move = self.find_move(self.state, _state)
+            if move:
+                self.children[move] = MctNode(_state, self, move)
 
     def backpropagate(self, value):
-        print("Backpropagating value:", value)
         self.visits += 1
         self.values += value
         if self.parent:
             self.parent.backpropagate(value)
+
+    def find_move(self, old_state: State, new_state: State):
+        for x in range(10):
+            for y in range(9):
+                if (
+                    old_state.state[x][y] != "一一"
+                    and new_state.state[x][y] == old_state.state[x][y]
+                ):
+                    from_pos = (x, y)
+                    # Find where the piece moved to
+                    for nx in range(10):
+                        for ny in range(9):
+                            if (
+                                (nx, ny) != (x, y)
+                                and old_state.state[nx][ny] == old_state.state[x][y]
+                                and new_state.state[nx][ny] == "一一"
+                            ):
+                                to_pos = (nx, ny)
+                                return from_pos, to_pos
+        return None
 
 
 class Mct:
