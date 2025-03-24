@@ -1,10 +1,10 @@
 from __future__ import annotations
 import copy
+from collections import defaultdict
+from random import choice
 
 from pieces import Piece
-
 from visutalize import Visualize
-from collections import defaultdict
 
 
 class State:
@@ -13,18 +13,11 @@ class State:
         self.player = player
 
     def draw(self):
-        """
-        Render the current state of the board using the Visualize class.
-        """
         Visualize.render_board_with_state(self.state)
 
     def valid(self):
-        _general_name = "黑帅" if self.player == 1 else "红帅"
-        for row in self.state:
-            for piece in row:
-                if piece == _general_name:
-                    return True
-        return False
+        general = "黑帅" if self.player == 1 else "红帅"
+        return any(general in row for row in self.state)
 
     def __str__(self):
         return (
@@ -33,95 +26,65 @@ class State:
         )
 
     def __iter__(self):
-        for row in self.state:
-            yield row
+        return iter(self.state)
 
     def __hash__(self):
-        return hash(",".join([",".join(row) for row in self]) + str(self.player))
+        return hash(",".join([",".join(row) for row in self.state]) + str(self.player))
 
     def random_move(self):
-        return State(
-            state=StateMachine.get_a_random_mutate(self.state, self.player),
-            player=-self.player,
-        )
+        new_state = StateMachine.get_random_mutation(self, self.player)
+        return State(new_state, -self.player) if new_state else self
 
     def get_legal_moves(self) -> list[State]:
-        player_color = ["红", "黑"][self.player == 1]
         return [
-            State(state=state, player=-self.player)
-            for state, _ in StateMachine.get_all_legal_mutates(self, player_color)
+            State(state=new_board, player=-self.player)
+            for new_board, _ in StateMachine.get_all_legal_mutations(self, self.player)
         ]
 
     def is_terminal(self):
-        res = not self.valid()
-        if res:
-            print(f"terminated")
-        return res
+        return not self.valid()
 
     def get_result(self):
-        if not self.valid():
-            return -self.player
-        return 0
+        return -self.player if not self.valid() else 0
 
-    def apply_move(self, from_pos, to_pos) -> State:
-        x_from, y_from = from_pos
-        x_to, y_to = to_pos
-        new_state = [row[:] for row in self]
-        new_state[x_to][y_to] = new_state[x_from][y_from]
-        new_state[x_from][y_from] = "一一"
-
-        return State(state=new_state, player=-self.player)
+    def apply_move(self, src, dst) -> State:
+        x1, y1 = src
+        x2, y2 = dst
+        new_board = [row[:] for row in self.state]
+        new_board[x2][y2], new_board[x1][y1] = new_board[x1][y1], "一一"
+        return State(new_board, -self.player)
 
 
 class StateMachine:
     @staticmethod
-    def get_all_legal_mutates(state: State | list[list[str]], player="黑"):
+    def get_all_legal_mutations(state: State | list[list[str]], player: int | str):
         if isinstance(state, list):
-            state = State(state, [1, -1][player != "红"])
-        yielded = set()
-        for _row in state:
-            for _piece in _row:
-                if _piece != "一一":
-                    piece_cls: Piece = Piece.get_name_to_cls_mapping().get(_piece)
-                    if piece_cls and _piece.startswith(player):
-                        for x in range(len(state.state)):
-                            for y in range(len(state.state[0])):
-                                if piece_cls._is(state.state, x, y):
-                                    moves = piece_cls.get_next_legal_move(
-                                        state.state, x, y
-                                    )
-                                    for move in moves:
-                                        if (x, y, move[0], move[1]) not in yielded:
-                                            yielded.add((x, y, move[0], move[1]))
+            state = State(state, 1 if player == "黑" else -1)
+        color = "红" if state.player == -1 else "黑"
+        visited = set()
 
-                                            _new_state = copy.deepcopy(state)
-                                            _new_state = _new_state.apply_move(
-                                                (x, y), move
-                                            )
-                                            yield _new_state.state, move
+        for x, row in enumerate(state.state):
+            for y, name in enumerate(row):
+                if name == "一一" or not name.startswith(color):
+                    continue
+                piece_cls = Piece.get_name_to_cls_mapping().get(name)
+                if piece_cls and piece_cls._is(state.state, x, y):
+                    for nx, ny in piece_cls.get_next_legal_move(state.state, x, y):
+                        key = (x, y, nx, ny)
+                        if key in visited:
+                            continue
+                        visited.add(key)
+                        yield state.apply_move((x, y), (nx, ny)).state, (x, y, nx, ny)
 
     @staticmethod
     def get_legal_moves_from_pos(state: State, pos, player):
-        player_color = ["红", "黑"][player == 1]
-        res = set()
-        for _state, move in StateMachine.get_all_legal_mutates(state, player_color):
-            for x in range(len(state.state)):
-                for y in range(len(state.state[0])):
-                    if x != pos[0] or y != pos[1]:
-                        continue
-                    if state.state[x][y] != "一一":
-                        res.add(move)
-        return res
+        return {
+            move[2:]
+            for _, move in StateMachine.get_all_legal_mutations(state, player)
+            if move[:2] == pos
+        }
 
     @staticmethod
-    def get_a_random_mutate(state, player):
-        from random import choice
-
-        player_color = ["红", "黑"][player == 1]
-        moves = list(
-            state
-            for state, _ in StateMachine.get_all_legal_mutates(state, player_color)
-        )
-        if moves:
-            return choice(moves)
-        return None
+    def get_random_mutation(state: State, player: int):
+        mutations = list(StateMachine.get_all_legal_mutations(state, player))
+        return choice(mutations)[0] if mutations else None
