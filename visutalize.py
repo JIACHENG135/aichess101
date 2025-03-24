@@ -2,7 +2,6 @@ import time
 from PIL import Image
 import numpy as np
 import os
-from state_machine import StateMachine
 import cv2
 
 
@@ -121,18 +120,18 @@ if __name__ == "__main__":
         ["一一", "一一", "一一", "一一", "一一", "一一", "一一", "一一", "一一"],
         ["黑车", "黑马", "黑象", "黑士", "黑帅", "黑士", "黑象", "黑马", "黑车"],
     ]
-    steps = 120
-    move_series = MoveSeries(init_state_matrix)
-    players = ["红", "黑"]
-    for _ in range(steps):
-        move = StateMachine.get_a_random_mutate(
-            init_state_matrix, players[[0, 1][_ % 2]]
-        )
-        if move:
-            from_pos, to_pos = move
-            move_series.add_move(move)
-            init_state_matrix = StateMachine.make_move(
-                init_state_matrix, from_pos, to_pos
-            )
-    video_filename = move_series.make_video()
-    print(f"Video saved as {video_filename}")
+    # steps = 120
+    # move_series = MoveSeries(init_state_matrix)
+    # players = ["红", "黑"]
+    # for _ in range(steps):
+    #     move = StateMachine.get_a_random_mutate(
+    #         init_state_matrix, players[[0, 1][_ % 2]]
+    #     )
+    #     if move:
+    #         from_pos, to_pos = move
+    #         move_series.add_move(move)
+    #         init_state_matrix = StateMachine.make_move(
+    #             init_state_matrix, from_pos, to_pos
+    #         )
+    # video_filename = move_series.make_video()
+    # print(f"Video saved as {video_filename}")
