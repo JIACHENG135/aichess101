@@ -1,5 +1,5 @@
 import unittest
-from pieces import (
+from _pieces import (
     Piece,
     BlackMinion,
     RedMinion,
@@ -16,7 +16,7 @@ from pieces import (
     BlackGurdian,
     cannon_filter,
 )
-from state_machine import StateMachine
+from state import StateMachine
 
 
 class TestPieces(unittest.TestCase):
@@ -66,8 +66,8 @@ class TestPieces(unittest.TestCase):
             ["一一", "黑炮", "一一"],
             ["一一", "红车", "一一"],
         ]
-        player = "黑"
-        moves = list(StateMachine.get_all_legal_mutates(state, player))
+
+        moves = list(move for _, move in StateMachine.get_all_legal_mutates(state))
         self.assertEqual(len(moves), 3)
 
     def test_car_filter(self):

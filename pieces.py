@@ -9,23 +9,19 @@ def is_legal_by_state(state, color, x, y):
     target = state[x][y]
     if target == "一一":
         return True
-    if target.startswith(color):
-        return False
-    return True
+    return not target.startswith(color)
 
 
 def raw_moves(cur_state, x, y):
-    moves = []
-    for i in range(1, 10):
-        moves.append((x + i, y))
-        moves.append((x - i, y))
-        moves.append((x, y + i))
-        moves.append((x, y - i))
-    return moves
+    return (
+        [(x + i, y) for i in range(1, 10)]
+        + [(x - i, y) for i in range(1, 10)]
+        + [(x, y + i) for i in range(1, 10)]
+        + [(x, y - i) for i in range(1, 10)]
+    )
 
 
 def linear_move_filter(cur_state, x, y, new_x, new_y, *, allow_jump=False):
-
     src_piece = cur_state[x][y]
     dst_piece = cur_state[new_x][new_y]
 
@@ -38,7 +34,7 @@ def linear_move_filter(cur_state, x, y, new_x, new_y, *, allow_jump=False):
         for i in range(x + step, new_x, step):
             if cur_state[i][y] != "一一":
                 count += 1
-    elif y != new_y:
+    else:
         step = 1 if new_y > y else -1
         for i in range(y + step, new_y, step):
             if cur_state[x][i] != "一一":
@@ -53,35 +49,30 @@ def linear_move_filter(cur_state, x, y, new_x, new_y, *, allow_jump=False):
         return count == 0 and (dst_empty or dst_enemy)
 
 
-car_filter = lambda cur_state, x, y, new_x, new_y: linear_move_filter(
-    cur_state, x, y, new_x, new_y, allow_jump=False
-)
-
-cannon_filter = lambda cur_state, x, y, new_x, new_y: linear_move_filter(
-    cur_state, x, y, new_x, new_y, allow_jump=True
-)
-
-
 def filter_legal_moves(color, customize_filter=None):
     def decorator(func):
         def wrapper(*args, **kwargs):
             cur_state, x, y = args[-3], args[-2], args[-1]
             moves = func(*args, **kwargs)
-
             moves = [pos for pos in moves if is_legal_by_bound(cur_state, *pos)]
-
             moves = [pos for pos in moves if is_legal_by_state(cur_state, color, *pos)]
-
-            if customize_filter is not None:
+            if customize_filter:
                 moves = [
                     pos for pos in moves if customize_filter(cur_state, x, y, *pos)
                 ]
-
             return set(moves)
 
         return wrapper
 
     return decorator
+
+
+car_filter = lambda s, x, y, nx, ny: linear_move_filter(
+    s, x, y, nx, ny, allow_jump=False
+)
+cannon_filter = lambda s, x, y, nx, ny: linear_move_filter(
+    s, x, y, nx, ny, allow_jump=True
+)
 
 
 class AbstractPiece(ABC):
@@ -99,9 +90,19 @@ class AbstractPiece(ABC):
 class Piece(AbstractPiece):
     available_pieces = []
 
+    name = None
+    move_func = None
+    filter_func = None
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        Piece.available_pieces.append(cls)
+        if cls.name:
+            Piece.available_pieces.append(cls)
+        if cls.name and cls.move_func:
+            color = cls.name[0]
+            cls.get_next_legal_move = filter_legal_moves(color, cls.filter_func)(
+                cls.move_func
+            )
 
     @classmethod
     def _is(cls, cur_state, x, y):
@@ -118,95 +119,43 @@ class Piece(AbstractPiece):
 
 class BlackMinion(Piece):
     name = "黑兵"
-
-    @staticmethod
-    @filter_legal_moves("黑")
-    def get_next_legal_move(cur_state, x, y):
-        if x <= 4:
-            return [(x - 1, y), (x, y + 1), (x, y - 1)]
-        return [(x - 1, y)]
+    move_func = lambda s, x, y: (
+        [(x - 1, y)] if x > 4 else [(x - 1, y), (x, y + 1), (x, y - 1)]
+    )
 
 
 class RedMinion(Piece):
     name = "红兵"
-
-    @staticmethod
-    @filter_legal_moves("红")
-    def get_next_legal_move(cur_state, x, y):
-        if x > 4:
-            return [(x + 1, y), (x, y + 1), (x, y - 1)]
-        return [(x + 1, y)]
+    move_func = lambda s, x, y: (
+        [(x + 1, y)] if x < 5 else [(x + 1, y), (x, y + 1), (x, y - 1)]
+    )
 
 
-class BlackGeneral(Piece):
-    name = "黑帅"
-
-    @staticmethod
-    def _filter(cur_state, x, y, new_x, new_y):
-        if new_x < 7 or new_y < 3 or new_y > 5:
-            return False
-        return True
-
-    @staticmethod
-    @filter_legal_moves("黑", customize_filter=_filter)
-    def get_next_legal_move(cur_state, x, y):
-        return [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
-
-
-class RedGeneral(Piece):
-    name = "红帅"
-
-    @staticmethod
-    def _filter(cur_state, x, y, new_x, new_y):
-        if new_x > 2 or new_y < 3 or new_y > 5:
-            return False
-        return True
-
-    @staticmethod
-    @filter_legal_moves("红", customize_filter=_filter)
-    def get_next_legal_move(cur_state, x, y):
-        return [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
-
-
-class Cannon(Piece):
-    name = None
-
-    get_next_legal_move = classmethod(lambda cls, cur_state, x, y: [])
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        color = cls.name[0]
-        cls.get_next_legal_move = filter_legal_moves(color, cannon_filter)(raw_moves)
-
-
-class BlackCannon(Cannon):
-    name = "黑炮"
-
-
-class RedCannon(Cannon):
-    name = "红炮"
-
-
-class Car(Piece):
-    name = None
-
-    get_next_legal_move = classmethod(lambda cls, cur_state, x, y: [])
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        color = cls.name[0]
-        cls.get_next_legal_move = filter_legal_moves(color, car_filter)(raw_moves)
-
-
-class BlackCar(Car):
+class BlackCar(Piece):
     name = "黑车"
+    move_func = raw_moves
+    filter_func = car_filter
 
 
-class RedCar(Car):
+class RedCar(Piece):
     name = "红车"
+    move_func = raw_moves
+    filter_func = car_filter
 
 
-def horse_move(cur_state, x, y):
+class BlackCannon(Piece):
+    name = "黑炮"
+    move_func = raw_moves
+    filter_func = cannon_filter
+
+
+class RedCannon(Piece):
+    name = "红炮"
+    move_func = raw_moves
+    filter_func = cannon_filter
+
+
+def horse_move(state, x, y):
     moves = []
     for dx, dy in [
         (2, 1),
@@ -218,117 +167,96 @@ def horse_move(cur_state, x, y):
         (-1, 2),
         (-1, -2),
     ]:
-        new_x = x + dx
-        new_y = y + dy
-        if is_legal_by_bound(cur_state, new_x, new_y):
-            if cur_state[new_x][new_y] == "一一" or not cur_state[new_x][
-                new_y
-            ].startswith(cur_state[x][y][0]):
+        nx, ny = x + dx, y + dy
+        if is_legal_by_bound(state, nx, ny):
+            if not state[nx][ny].startswith(state[x][y][0]) or state[nx][ny] == "一一":
                 if (
-                    (dx == 2 and cur_state[x + 1][y] == "一一")
-                    or (dx == -2 and cur_state[x - 1][y] == "一一")
-                    or (dy == 2 and cur_state[x][y + 1] == "一一")
-                    or (dy == -2 and cur_state[x][y - 1] == "一一")
+                    (dx == 2 and state[x + 1][y] == "一一")
+                    or (dx == -2 and state[x - 1][y] == "一一")
+                    or (dy == 2 and state[x][y + 1] == "一一")
+                    or (dy == -2 and state[x][y - 1] == "一一")
                 ):
-                    moves.append((new_x, new_y))
-
+                    moves.append((nx, ny))
     return moves
 
 
-class Horse(Piece):
-    name = None
-
-    get_next_legal_move = classmethod(lambda cls, cur_state, x, y: [])
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        color = cls.name[0]
-        cls.get_next_legal_move = filter_legal_moves(color)(horse_move)
-
-
-class BlackHorse(Horse):
+class BlackHorse(Piece):
     name = "黑马"
+    move_func = horse_move
 
 
-class RedHorse(Horse):
+class RedHorse(Piece):
     name = "红马"
+    move_func = horse_move
 
 
-def elephant_move(cur_state, x, y):
+def elephant_move(state, x, y):
     moves = []
-    black_bound = 5
-    red_bound = 4
     for dx, dy in [(2, 2), (2, -2), (-2, 2), (-2, -2)]:
-        new_x = x + dx
-        new_y = y + dy
-        if is_legal_by_bound(cur_state, new_x, new_y):
-            if cur_state[new_x][new_y] == "一一" or not cur_state[new_x][
-                new_y
-            ].startswith(cur_state[x][y][0]):
-                midx = (x + new_x) // 2
-                midy = (y + new_y) // 2
-                if cur_state[midx][midy] == "一一":
-                    if (cur_state[x][y].startswith("黑") and midx >= black_bound) or (
-                        cur_state[x][y].startswith("红") and midx <= red_bound
-                    ):
-                        moves.append((new_x, new_y))
-    return moves
-
-
-class Elephant(Piece):
-    name = None
-
-    get_next_legal_move = classmethod(lambda cls, cur_state, x, y: [])
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        color = cls.name[0]
-        cls.get_next_legal_move = filter_legal_moves(color)(elephant_move)
-
-
-class BlackElephant(Elephant):
-    name = "黑象"
-
-
-class RedElephant(Elephant):
-    name = "红象"
-
-
-def gurdian_move(cur_state, x, y):
-    moves = []
-    for dx, dy in [(1, 1), (1, -1), (-1, 1), (-1, -1)]:
-        new_x = x + dx
-        new_y = y + dy
-        if is_legal_by_bound(cur_state, new_x, new_y):
-            if (
-                (
-                    cur_state[new_x][new_y] == "一一"
-                    or not cur_state[new_x][new_y].startswith(cur_state[x][y][0])
-                )
-                and new_y >= 3
-                and new_y <= 5
-            ):
-                if (cur_state[x][y].startswith("黑") and new_x >= 7) or (
-                    cur_state[x][y].startswith("红") and new_x <= 2
+        nx, ny = x + dx, y + dy
+        if is_legal_by_bound(state, nx, ny):
+            mx, my = (x + nx) // 2, (y + ny) // 2
+            if state[mx][my] == "一一":
+                if (state[x][y].startswith("黑") and nx >= 5) or (
+                    state[x][y].startswith("红") and nx <= 4
                 ):
-                    moves.append((new_x, new_y))
+                    moves.append((nx, ny))
     return moves
 
 
-class Gurdian(Piece):
-    name = None
-
-    get_next_legal_move = classmethod(lambda cls, cur_state, x, y: [])
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        color = cls.name[0]
-        cls.get_next_legal_move = filter_legal_moves(color)(gurdian_move)
+class BlackElephant(Piece):
+    name = "黑象"
+    move_func = elephant_move
 
 
-class BlackGurdian(Gurdian):
+class RedElephant(Piece):
+    name = "红象"
+    move_func = elephant_move
+
+
+def gurdian_move(state, x, y):
+    moves = []
+    for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+        nx, ny = x + dx, y + dy
+        if is_legal_by_bound(state, nx, ny) and 3 <= ny <= 5:
+            if (state[x][y].startswith("黑") and nx >= 7) or (
+                state[x][y].startswith("红") and nx <= 2
+            ):
+                moves.append((nx, ny))
+    return moves
+
+
+class BlackGurdian(Piece):
     name = "黑士"
+    move_func = gurdian_move
 
 
-class RedGurdian(Gurdian):
+class RedGurdian(Piece):
     name = "红士"
+    move_func = gurdian_move
+
+
+class BlackGeneral(Piece):
+    name = "黑帅"
+
+    @staticmethod
+    def _filter(state, x, y, nx, ny):
+        return 7 <= nx <= 9 and 3 <= ny <= 5
+
+    @staticmethod
+    @filter_legal_moves("黑", customize_filter=_filter)
+    def get_next_legal_move(state, x, y):
+        return [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+
+
+class RedGeneral(Piece):
+    name = "红帅"
+
+    @staticmethod
+    def _filter(state, x, y, nx, ny):
+        return 0 <= nx <= 2 and 3 <= ny <= 5
+
+    @staticmethod
+    @filter_legal_moves("红", customize_filter=_filter)
+    def get_next_legal_move(state, x, y):
+        return [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]

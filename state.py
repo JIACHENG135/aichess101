@@ -75,7 +75,9 @@ class State:
 
 class StateMachine:
     @staticmethod
-    def get_all_legal_mutates(state: State, player):
+    def get_all_legal_mutates(state: State | list[list[str]], player="黑"):
+        if isinstance(state, list):
+            state = State(state, [1, -1][player != "红"])
         yielded = set()
         for _row in state:
             for _piece in _row:
