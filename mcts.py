@@ -49,7 +49,7 @@ class Mct:
         Visualize.render_board_with_state(state.state)
         self.root = MctNode(state)
         self.cur = self.root
-        self.rounds = 300
+        self.rounds = 400
 
     def simulate(self, state: State):
         current = state
@@ -81,7 +81,6 @@ class Mct:
             return None
         if all(not child.state.valid() for child in self.root.children.values()):
             return None
-        self.search()
         best_node = max(self.root.children.values(), key=lambda n: n.values / n.visits)
         Visualize.render_board_with_state(best_node.state.state)
         self.root = best_node
