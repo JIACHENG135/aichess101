@@ -1,5 +1,5 @@
 import unittest
-from _pieces import (
+from pieces import (
     Piece,
     BlackMinion,
     RedMinion,
