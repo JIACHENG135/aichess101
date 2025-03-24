@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtGui import QPixmap, QMouseEvent, QPainter, QColor
 from PyQt5.QtCore import Qt, QTimer, QEventLoop, pyqtSignal
 
-from state import State
+from state import State, StateMachine
 from mcts import Mct
 
 
@@ -81,13 +81,21 @@ class ChessBoard(QWidget):
             from_pos = (self.human_action[-2][0], self.human_action[-2][1])
             to_pos = (self.human_action[-1][0], self.human_action[-1][1])
             print(f"人类选择了动作: {from_pos} -> {to_pos}")
-            # 更新棋盘状态
-            self.mct.do_human_move(from_pos, to_pos)
-            self.human_action = []
-            self.last_clicked = None
-            painter = QPainter(self)
-            painter.drawPixmap(0, 0, self.getCurrentStateImage())
-            self.move_made.emit((from_pos[0], from_pos[1], to_pos[0], to_pos[1]))
+            legal_moves = StateMachine.get_legal_moves_from_pos(
+                self.mct.cur.state, from_pos, self.mct.cur.state.player
+            )
+            if to_pos in legal_moves:
+                # 更新棋盘状态
+                self.mct.do_human_move(from_pos, to_pos)
+                self.human_action = []
+                self.last_clicked = None
+                painter = QPainter(self)
+                painter.drawPixmap(0, 0, self.getCurrentStateImage())
+                self.move_made.emit((from_pos[0], from_pos[1], to_pos[0], to_pos[1]))
+            else:
+                print("非法移动，点击无效")
+                self.human_action = []
+                self.last_clicked = None
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import copy
 from pieces import Piece
 
 from visutalize import Visualize
+from collections import defaultdict
 
 
 class State:
@@ -46,11 +47,16 @@ class State:
 
     def get_legal_moves(self) -> list[State]:
         player_color = ["红", "黑"][self.player == 1]
-        states = StateMachine.get_all_legal_mutates(self, player_color)
-        return [State(state=state, player=-self.player) for state in states]
+        return [
+            State(state=state, player=-self.player)
+            for state, _ in StateMachine.get_all_legal_mutates(self, player_color)
+        ]
 
     def is_terminal(self):
-        return not self.valid()
+        res = not self.valid()
+        if res:
+            print(f"terminated")
+        return res
 
     def get_result(self):
         if not self.valid():
@@ -90,14 +96,30 @@ class StateMachine:
                                             _new_state = _new_state.apply_move(
                                                 (x, y), move
                                             )
-                                            yield _new_state.state
+                                            yield _new_state.state, move
+
+    @staticmethod
+    def get_legal_moves_from_pos(state: State, pos, player):
+        player_color = ["红", "黑"][player == 1]
+        res = set()
+        for _state, move in StateMachine.get_all_legal_mutates(state, player_color):
+            for x in range(len(state.state)):
+                for y in range(len(state.state[0])):
+                    if x != pos[0] or y != pos[1]:
+                        continue
+                    if state.state[x][y] != "一一":
+                        res.add(move)
+        return res
 
     @staticmethod
     def get_a_random_mutate(state, player):
         from random import choice
 
         player_color = ["红", "黑"][player == 1]
-        moves = list(StateMachine.get_all_legal_mutates(state, player_color))
+        moves = list(
+            state
+            for state, _ in StateMachine.get_all_legal_mutates(state, player_color)
+        )
         if moves:
             return choice(moves)
         return None

@@ -49,7 +49,7 @@ class Mct:
         Visualize.render_board_with_state(state.state)
         self.root = MctNode(state)
         self.cur = self.root
-        self.rounds = 5
+        self.rounds = 300
 
     def simulate(self, state: State):
         current = state
@@ -57,7 +57,6 @@ class Mct:
         seen_states.add(hash(current))
         rounds = self.rounds
         while not current.is_terminal() and rounds > 0:
-            # print(f"Simulating from state: {current}")
             moves = current.get_legal_moves()
             current = random.choice(moves)
             if hash(current) in seen_states:
@@ -80,7 +79,10 @@ class Mct:
     def do_best_move(self):
         if not self.root.children:
             return None
-        best_node = max(self.root.children.values(), key=lambda n: n.visits)
+        if all(not child.state.valid() for child in self.root.children.values()):
+            return None
+        self.search()
+        best_node = max(self.root.children.values(), key=lambda n: n.values / n.visits)
         Visualize.render_board_with_state(best_node.state.state)
         self.root = best_node
         self.cur = best_node
@@ -88,7 +90,6 @@ class Mct:
         return best_node.state
 
     def do_human_move(self, from_pos, to_pos):
-        print(f"applying human move: {from_pos} -> {to_pos}")
         next_state = self.cur.state.apply_move(from_pos, to_pos)
         Visualize.render_board_with_state(next_state.state)
         node = self.cur.children.get(hash(next_state), MctNode(next_state, self.root))
