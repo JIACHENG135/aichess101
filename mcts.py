@@ -71,7 +71,7 @@ class Mct:
         Visualize.render_board_with_state(state.state)
         self.root = MctNode(state)
         self.cur = self.root
-        self.rounds = 100
+        self.rounds = 400
 
     def simulate(self, state: State):
         current = state
