@@ -46,7 +46,19 @@ class State:
         return not self.valid()
 
     def get_result(self):
-        return -self.player if not self.valid() else 0
+        res = 0
+        if not self.valid():
+            res = -10000 if self.player == 1 else 10000
+        else:
+            black_pieces = sum(
+                1 for row in self.state for name in row if name.startswith("黑")
+            )
+            red_pieces = sum(1 for row in self.state for name in row if name.startswith("红"))
+            if self.player == 1:
+                res += (black_pieces - red_pieces) * 10
+            else:
+                res += (red_pieces - black_pieces) * 10
+        return res
 
     def apply_move(self, src, dst) -> State:
         x1, y1 = src
@@ -69,7 +81,6 @@ class StateMachine:
                 if name == "一一" or not name.startswith(color):
                     continue
                 piece_cls = Piece.get_name_to_cls_mapping().get(name)
-                print(piece_cls)
                 if piece_cls and piece_cls._is(state.state, x, y):
                     for nx, ny in piece_cls.get_next_legal_move(state.state, x, y):
                         key = (x, y, nx, ny)
