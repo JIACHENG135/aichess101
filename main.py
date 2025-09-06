@@ -103,6 +103,8 @@ def train_model(model, data, device):
 
 
 def main():
+    cuda_available = torch.cuda.is_available()
+    print(cuda_available)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ChessNet()
 
