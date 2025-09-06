@@ -127,8 +127,8 @@ class BlackGeneral(Piece):
     def _filter(state, x, y, nx, ny):
         return 7 <= nx <= 9 and 3 <= ny <= 5
 
-    @staticmethod
-    @filter_legal_moves("黑", customize_filter=_filter)
+
+    @filter_legal_moves("黑", customize_filter=lambda state, x, y, nx, ny: 7 <= nx <= 9 and 3 <= ny <= 5)
     def get_next_legal_move(state, x, y):
         return [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
 
@@ -140,7 +140,6 @@ class RedGeneral(Piece):
     def _filter(state, x, y, nx, ny):
         return 0 <= nx <= 2 and 3 <= ny <= 5
 
-    @staticmethod
-    @filter_legal_moves("红", customize_filter=_filter)
+    @filter_legal_moves("红", customize_filter=lambda state, x, y, nx, ny: 0 <= nx <= 2 and 3 <= ny <= 5)
     def get_next_legal_move(state, x, y):
         return [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]

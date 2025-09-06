@@ -69,6 +69,7 @@ class StateMachine:
                 if name == "一一" or not name.startswith(color):
                     continue
                 piece_cls = Piece.get_name_to_cls_mapping().get(name)
+                print(piece_cls)
                 if piece_cls and piece_cls._is(state.state, x, y):
                     for nx, ny in piece_cls.get_next_legal_move(state.state, x, y):
                         key = (x, y, nx, ny)
