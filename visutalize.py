@@ -91,7 +91,7 @@ class Visualize:
                         x = col * cell_width
                         y = row * cell_height
                         composite.paste(resized_piece, (x, y), mask=resized_piece)
-        print(f"saving image to {filename}")
+        # print(f"saving image to {filename}")
         composite.save(filename)
 
 

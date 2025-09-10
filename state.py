@@ -5,6 +5,7 @@ from random import choice
 
 from pieces import Piece
 from visutalize import Visualize
+import torch
 
 
 class State:
@@ -45,7 +46,19 @@ class State:
         return not self.valid()
 
     def get_result(self):
-        return -self.player if not self.valid() else 0
+        res = 0
+        if not self.valid():
+            res = -10000 if self.player == 1 else 10000
+        else:
+            black_pieces = sum(
+                1 for row in self.state for name in row if name.startswith("黑")
+            )
+            red_pieces = sum(1 for row in self.state for name in row if name.startswith("红"))
+            if self.player == 1:
+                res += (black_pieces - red_pieces) * 10
+            else:
+                res += (red_pieces - black_pieces) * 10
+        return res
 
     def apply_move(self, src, dst) -> State:
         x1, y1 = src
